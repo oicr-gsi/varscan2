@@ -1,0 +1,13 @@
+#surefire_0
+#Tue Nov 21 16:32:28 EST 2017
+jpda.address=62516
+maven.ext.class.path=/Applications/NetBeans/NetBeans 8.2.app/Contents/Resources/NetBeans/java/maven-nblib/netbeans-eventspy.jar
+bundledBinPath=/Users/prath/repo/varscan2/workflow-varscan2/target/Workflow_Bundle_Varscan2_1.0_SeqWare_1.1.1-gsi/Workflow_Bundle_Varscan2/1.0/bin/
+jpda.listen=true
+forkMode=once
+user.dir=/Users/prath/repo/varscan2/workflow-varscan2
+localRepository=/Users/prath/.m2/repository
+test=ca.on.oicr.pde.workflows.WorkflowClientTest
+bundleDirectory=/Users/prath/repo/varscan2/workflow-varscan2/target/Workflow_Bundle_Varscan2_1.0_SeqWare_1.1.1-gsi/Workflow_Bundle_Varscan2/1.0
+basedir=/Users/prath/repo/varscan2/workflow-varscan2
+maven.surefire.debug=-Xdebug -Xrunjdwp\:transport\=dt_socket,server\=n,address\=62516
