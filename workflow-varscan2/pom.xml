@@ -18,6 +18,6 @@
     <url>http://maven.apache.org</url>
 
     <properties>
-        <workflow-name>Varscan2</workflow-name>
+        <workflow-name>VarScan2</workflow-name>
     </properties>
 </project>
