@@ -72,7 +72,7 @@ public class Varscan2Workflow extends OicrWorkflow {
         try {
             //dir
             dataDir = "data/";
-            tmpDir = getProperty("tmp_dir/");
+            tmpDir = getProperty("tmp_dir");
 
             // input samples 
             tumorBam = getProperty("input_files_tumor");
