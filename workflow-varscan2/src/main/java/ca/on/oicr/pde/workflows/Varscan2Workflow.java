@@ -71,8 +71,8 @@ public class Varscan2Workflow extends OicrWorkflow {
     private void init() {
         try {
             //dir
-            dataDir = "data";
-            tmpDir = getProperty("tmp_dir");
+            dataDir = "data/";
+            tmpDir = getProperty("tmp_dir/");
 
             // input samples 
             tumorBam = getProperty("input_files_tumor");
@@ -142,13 +142,13 @@ public class Varscan2Workflow extends OicrWorkflow {
         Job parentJob = null;
         this.outDir = this.outputFilenamePrefix + "_output/";
         String inputTumourBam = getFiles().get("tumor").getProvisionedPath();
-        String tumourPileupFile = this.outDir + this.outputFilenamePrefix + ".tumour.mpileup";
+        String tumourPileupFile = this.dataDir + this.outputFilenamePrefix + ".tumour.mpileup";
         Job tumourPileup = generateMpileup(inputTumourBam, tumourPileupFile);
         parentJob = tumourPileup;
         if (this.normalBam != null) {
             // general normal pileup
             String inputNormalBam = getFiles().get("normal").getProvisionedPath();
-            String normalPileupFile = this.outDir + this.outputFilenamePrefix + ".normal.mpileup";
+            String normalPileupFile = this.dataDir + this.outputFilenamePrefix + ".normal.mpileup";
             Job normalPileup = generateMpileup(inputNormalBam, normalPileupFile);
             normalPileup.addParent(parentJob);
             parentJob = normalPileup;
@@ -201,7 +201,7 @@ public class Varscan2Workflow extends OicrWorkflow {
         cmd.addArgument("--variants 1");
         cmd.addArgument("--min-var-freq " + this.minVarFreq.toString());
         cmd.addArgument("--min-coverage " + this.minCovTumour.toString());
-        cmd.addArgument("> " + this.outDir + this.outputFilenamePrefix+".varscan.germline.vcf");
+        cmd.addArgument("> " + this.dataDir + this.outputFilenamePrefix+".varscan.germline.vcf");
         ssSNP.setMaxMemory(Integer.toString(varscanMem * 1024));
         ssSNP.setQueue(this.queue);
         return ssSNP;
@@ -220,7 +220,7 @@ public class Varscan2Workflow extends OicrWorkflow {
         cmd.addArgument("--min-var-freq " + this.minVarFreq.toString());
         cmd.addArgument("--min-coverage-tumour " + this.minCovTumour.toString());
         cmd.addArgument("--min-coverage-normal " + this.minCovNormal.toString());
-        cmd.addArgument("> " + this.outDir + this.outputFilenamePrefix+".varscan.somatic.vcf");
+        cmd.addArgument("> " + this.dataDir + this.outputFilenamePrefix+".varscan.somatic.vcf");
         somaticSNP.setMaxMemory(Integer.toString(varscanMem * 1024));
         somaticSNP.setQueue(this.queue);
         return somaticSNP;
