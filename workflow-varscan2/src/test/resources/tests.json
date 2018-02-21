@@ -12,7 +12,22 @@
             "parameters": {
                 "input_files_tumor": "/.mounts/labs/PDE/data/testdata/genomic/bam/TGL_test/Sequenza/TGL01_0001_Sk_M_PE_426_EX.sorted.filter.deduped.realign.recal.bam",
                 "input_files_normal": "/.mounts/labs/PDE/data/testdata/genomic/bam/TGL_test/Sequenza/TGL01_0001_Pb_R_PE_466_EX.sorted.filter.deduped.realign.recal.bam",
-                "external_name": "INS-D-004-ST"
+                "external_name": "INS-D-004-ST",
+                "minimum_variant_freq": "0.02",
+                "minimum_base_quality": "20",
+                "minimum_mapping_quality": "20",
+                "minimum_coverage_cutoff_tumour": "8",
+                "minimum_coverage_cutoff_normal": "8",
+                "minimum_coverage_cutoff": "20"
+            }
+        },
+        {
+            "id": "workflow_test_02",
+            "parameters": {
+                "input_files_tumor": "/.mounts/labs/PDE/data/testdata/genomic/bam/TGL_test/Sequenza/TGL01_0001_Sk_M_PE_426_EX.sorted.filter.deduped.realign.recal.bam",
+                "external_name": "INS-D-004-ST",
+                "minimum_variant_freq": "0.02",
+                "minimum_coverage_cutoff_tumour": "8"
             }
         }
     ]

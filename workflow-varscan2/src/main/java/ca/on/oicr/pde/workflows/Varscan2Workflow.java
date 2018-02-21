@@ -30,44 +30,43 @@ public class Varscan2Workflow extends OicrWorkflow {
     private String tumorBam;
     private String normalBam;
     private String outputFilenamePrefix;
+    
+    // Params SNP
+    private Float minVarFreq;
+    private Integer minCovTumour;
+    private Integer minCovNormal;
+    
+    // Params CNA
+    private Integer minBaseQual;
+    private Integer minCov;
+    private Integer minMapQ;
 
-    //varscan intermediate file names
-    private String snpFile;
-    private String cnvFile;
-    private String indelFile;
-    private String mpileupFile;
-    private String varscanCopycallFile;
-    private String copyNumberFile;
-    private String somaticPileupFile;
+    
 
     //Tools
     private String samtools;
     private String java;
     private String varscan;
+    private String bcftools;
+    private String vcftools;
+    private String tabix;
+    private String bgzip;
 
     //Memory allocation
     private Integer varscanMem;
     private String javaMem = "-Xmx8g";
 
-    //path to bin
-    private String bin;
-//    private String pypy;
-    private String rScript;
-    private String rLib;
+
 
     //ref Data
     private String refFasta;
-    private String intervalFile;
-//    private String sequenzaGCData;
 
     private boolean manualOutput;
-    private static final Logger logger = Logger.getLogger(Varscan2Workflow.class.getName());
     private String queue;
-    private Map<String, SqwFile> tempFiles;
 
     // meta-types
-    private final static String TXT_METATYPE = "text/plain";
-    private final static String TAR_GZ_METATYPE = "application/tar-gzip";
+    private final static String VCF_METATYPE = "text/vcf-4";
+    private final static String COPYNUMBER_METATYPE = "text/varscan-copynumber";
 
     private void init() {
         try {
@@ -77,19 +76,28 @@ public class Varscan2Workflow extends OicrWorkflow {
 
             // input samples 
             tumorBam = getProperty("input_files_tumor");
-            normalBam = getProperty("input_files_normal");
+            normalBam = getOptionalProperty("input_files_normal", null);
+            
+            // params
+            minVarFreq = Float.parseFloat(getProperty("minimum_variant_freq"));
+            minBaseQual = Integer.parseInt(getOptionalProperty("minimum_base_quality", "20"));
+            minMapQ = Integer.parseInt(getOptionalProperty("minimum_mapping_quality", "20"));
+            minCov = Integer.parseInt(getOptionalProperty("minimum_coverage_cutoff", "20"));
+            minCovTumour = Integer.parseInt(getProperty("minimum_coverage_cutoff_tumour"));
+            minCovNormal = Integer.parseInt(getOptionalProperty("minimum_coverage_cutoff_normal", "8"));
 
             //Ext id
             outputFilenamePrefix = getProperty("external_name");
 
             //samtools
             samtools = getProperty("samtools");
+            
+            //varscan
             java = getProperty("java");
             varscan = getProperty("varscan").toString();
 
             // ref fasta
             refFasta = getProperty("ref_fasta");
-            intervalFile = getProperty("interval_bed");
 
             manualOutput = Boolean.parseBoolean(getProperty("manual_output"));
             queue = getOptionalProperty("queue", "");
@@ -120,170 +128,127 @@ public class Varscan2Workflow extends OicrWorkflow {
         file0.setSourcePath(tumorBam);
         file0.setType("application/bam");
         file0.setIsInput(true);
-        SqwFile file1 = this.createFile("normal");
-        file1.setSourcePath(normalBam);
-        file1.setType("application/bam");
-        file1.setIsInput(true);
+        if (normalBam != null) { // check for missing matched normals
+            SqwFile file1 = this.createFile("normal");
+            file1.setSourcePath(normalBam);
+            file1.setType("application/bam");
+            file1.setIsInput(true);
+        }
         return this.getFiles();
     }
 
     @Override
     public void buildWorkflow() {
-
-        /**
-         * Steps for sequenza: 1. Check if "bam" file exists; true 2. Check if
-         * "bai" file exists; true: go to step 4 3. Check if normal Pb_R sample
-         * exists; true: go to step 4; else abort 3. If false: samtools index
-         * "bam" file 4. Run job sequenza-utils 5. If outputFile ends with
-         * "bin50.gz"; go to step 6; else go to step 4 6. Run job sequenzaR 7.
-         * Iterate through the files/folders in outDir: 8. If fileName1 ==
-         * "pandc.txt" and fileName2 ends with "Total_CN.seg"; create a folder
-         * called "copynumber" 9. If fileType == "folder"; create a folder
-         * called "model-fit"; move folders to "model-fit" 10. If fileType ==
-         * "file" && fileName != outputFile; move file to "model-fit" 11. Delete
-         * outputFile (rm outputFile) 12. zip "model-fit" 13. outputFile =
-         * fileName2 14. OutputDir contains the following: fileName1,
-         * outputFile, model-fit.zip
-         */
-        // workflow : read inputs tumor and normal bam; run sequenza-utils; write the output to temp directory; 
-        // run sequenzaR; handle output; provision files (3) -- model-fit.zip; text/plain; text/plain
         Job parentJob = null;
-        this.outDir = this.outputFilenamePrefix + "_output";
-        this.snpFile = this.tmpDir + this.outputFilenamePrefix + ".varscanSomatic.snp";
-        this.cnvFile = this.tmpDir + this.outputFilenamePrefix + ".VarScan.CopyNumber.copynumber";
-        this.indelFile = this.tmpDir + this.outputFilenamePrefix + ".varscanSomatic.indel";
-        this.mpileupFile = this.tmpDir + this.outputFilenamePrefix + ".mpileup";
-        this.varscanCopycallFile = this.tmpDir + this.outputFilenamePrefix + ".VarScan.CopyCaller";
-        this.copyNumberFile = this.tmpDir + this.outputFilenamePrefix + ".VarScan.CopyNumber";
-        this.somaticPileupFile = this.tmpDir + this.outputFilenamePrefix + ".varscanSomatic";
-
-        Job mpileup = runMpileup();
-        parentJob = mpileup;
-
-        Job somaticMpileup = getSomaticPileup();
-        somaticMpileup.addParent(parentJob);
-        parentJob = somaticMpileup;
-
-        Job varscanIndels = varscanIndels();
-        varscanIndels.addParent(parentJob);
-
-        Job varscanSNP = varscanSNP();
-        varscanSNP.addParent(parentJob);
-
-        Job varscanCNA = varscanCNA();
-        varscanCNA.addParent(parentJob);
-        parentJob = varscanCNA;
-
-        Job varscanCNACaller = varscanCNACaller();
-        varscanCNACaller.addParent(parentJob);
-        parentJob = varscanCNACaller;
-
-        // Provision all files
-        SqwFile snpOutFile = createOutputFile(this.snpFile, TXT_METATYPE, this.manualOutput);
-        snpOutFile.getAnnotations().put("SNPS from VarScan2 ", "Varscan_SNPS ");
-        varscanSNP.addFile(snpOutFile);
-        SqwFile indelsFile = createOutputFile(this.indelFile, TXT_METATYPE, this.manualOutput);
-        indelsFile.getAnnotations().put("Indels from VarScan2 ", "Varscan_Indels ");
-        varscanIndels.addFile(indelsFile);
-        SqwFile copyNumverVarFile = createOutputFile(this.cnvFile, TXT_METATYPE, this.manualOutput);
-        copyNumverVarFile.getAnnotations().put("CNA from VarScan2 ", "Varscan_CNA ");
-        varscanCNA.addFile(copyNumverVarFile);
-        SqwFile copyNumFile = createOutputFile(this.copyNumberFile, TXT_METATYPE, this.manualOutput);
-        copyNumFile.getAnnotations().put("CNA calls from VarScan2 ", "Varscan_CNA_calls ");
-        varscanCNA.addFile(copyNumFile);
-        SqwFile copyCallFile = createOutputFile(this.copyNumberFile, TXT_METATYPE, this.manualOutput);
-        copyCallFile.getAnnotations().put("CNV calls from VarScan2 ", "Varscan_copy_number_calls ");
-        varscanCNACaller.addFile(copyCallFile);
+        this.outDir = this.outputFilenamePrefix + "_output/";
+        String inputTumourBam = getFiles().get("tumor").getProvisionedPath();
+        String tumourPileupFile = this.outDir + this.outputFilenamePrefix + ".tumour.mpileup";
+        Job tumourPileup = generateMpileup(inputTumourBam, tumourPileupFile);
+        parentJob = tumourPileup;
+        if (this.normalBam != null) {
+            // general normal pileup
+            String inputNormalBam = getFiles().get("normal").getProvisionedPath();
+            String normalPileupFile = this.outDir + this.outputFilenamePrefix + ".normal.mpileup";
+            Job normalPileup = generateMpileup(inputNormalBam, normalPileupFile);
+            normalPileup.addParent(parentJob);
+            parentJob = normalPileup;
+            
+            // SNP calls
+            Job somaticCall = runVarScanSomatic(tumourPileupFile, normalPileupFile);
+            somaticCall.addParent(parentJob);
+            
+            // Provision VCF
+            
+            //copy number
+            Job copyNumber = runVarScanCopyNumber(tumourPileupFile, normalPileupFile);
+            copyNumber.addParent(parentJob);
+            
+            // Provision Copynumber file
+        }
+        else {
+            Job germlineCall = runVarScanGermline(tumourPileupFile);
+            germlineCall.addParent(parentJob);
+            
+            // Provision VCF
+        }
+        
+        
     }
 
     
-    private Job runMpileup() {
-        Job mpileup = getWorkflow().createBashJob("mpileup");
-        Command cmd = mpileup.getCommand();
+    private Job generateMpileup(String inBam, String outPileup) {
+        Job ssmpileup = getWorkflow().createBashJob("generate_mpileup");
+        Command cmd = ssmpileup.getCommand();
         cmd.addArgument(this.samtools);
-        cmd.addArgument("mpileup -q 1");
+        cmd.addArgument("mpileup -B");
         cmd.addArgument("-f " + this.refFasta);
-        cmd.addArgument("-l " + this.intervalFile);
-        cmd.addArgument("-B -d 1000000");
-        cmd.addArgument(getFiles().get("normal").getProvisionedPath());
-        cmd.addArgument(getFiles().get("tumor").getProvisionedPath());
-        cmd.addArgument("> " + this.mpileupFile);
-        mpileup.setMaxMemory(Integer.toString(varscanMem * 1024));
-        mpileup.setQueue(getOptionalProperty("queue", ""));
-        return mpileup;
-    }
-
-    private Job getSomaticPileup() {
-        Job somaticPileup = getWorkflow().createBashJob("somatic_pileup");
-        Command cmd = somaticPileup.getCommand();
+        cmd.addArgument(inBam);
+        cmd.addArgument(">" + outPileup);
+        ssmpileup.setMaxMemory(Integer.toString(this.varscanMem * 1024));
+        ssmpileup.setQueue(getOptionalProperty("queue", ""));
+        return ssmpileup;
+    }   
+    
+    private Job runVarScanGermline(String tumourPileupFile) {
+        Job ssSNP = getWorkflow().createBashJob("varscan_germline");
+        Command cmd = ssSNP.getCommand();
         cmd.addArgument(this.java);
         cmd.addArgument(this.javaMem);
-        cmd.addArgument("-jar");
-        cmd.addArgument(this.varscan);
+        cmd.addArgument("-jar " + this.varscan);
+        cmd.addArgument("mpileup2cns");
+        cmd.addArgument(tumourPileupFile);
+        cmd.addArgument("--outout-vcf 1");
+        cmd.addArgument("--variants 1");
+        cmd.addArgument("--min-var-freq " + this.minVarFreq.toString());
+        cmd.addArgument("--min-coverage " + this.minCovTumour.toString());
+        cmd.addArgument("> " + this.outDir + this.outputFilenamePrefix+".varscan.germline.vcf");
+        ssSNP.setMaxMemory(Integer.toString(varscanMem * 1024));
+        ssSNP.setQueue(this.queue);
+        return ssSNP;
+    }
+
+    private Job runVarScanSomatic(String tumourPileupFile, String normalPileupFile){
+        Job somaticSNP = getWorkflow().createBashJob("varscan_Somatic");
+        Command cmd = somaticSNP.getCommand();
+        cmd.addArgument(this.java);
+        cmd.addArgument(this.javaMem);
+        cmd.addArgument("-jar "+this.varscan);
         cmd.addArgument("somatic");
-        cmd.addArgument(this.mpileupFile);
-        cmd.addArgument(this.somaticPileupFile);
-        cmd.addArgument("--mpileup 1");
-        somaticPileup.setMaxMemory(Integer.toString(varscanMem * 1024));
-        somaticPileup.setQueue(getOptionalProperty("queue", ""));
-        return somaticPileup;
+        cmd.addArgument(tumourPileupFile);
+        cmd.addArgument(normalPileupFile);
+        cmd.addArgument("--output-vcf 1");
+        cmd.addArgument("--min-var-freq " + this.minVarFreq.toString());
+        cmd.addArgument("--min-coverage-tumour " + this.minCovTumour.toString());
+        cmd.addArgument("--min-coverage-normal " + this.minCovNormal.toString());
+        cmd.addArgument("> " + this.outDir + this.outputFilenamePrefix+".varscan.somatic.vcf");
+        somaticSNP.setMaxMemory(Integer.toString(varscanMem * 1024));
+        somaticSNP.setQueue(this.queue);
+        return somaticSNP;
     }
 
-    private Job varscanIndels() {
-        Job vsIndels = getWorkflow().createBashJob("varscan_indels");
-        Command cmd = vsIndels.getCommand();
-        cmd.addArgument(this.java);
-        cmd.addArgument(this.javaMem);
-        cmd.addArgument("-jar " + this.varscan);
-        cmd.addArgument("processSomatic");
-        cmd.addArgument(this.indelFile);
-        vsIndels.setMaxMemory(Integer.toString(varscanMem * 1024));
-        vsIndels.setQueue(getOptionalProperty("queue", ""));
-        return vsIndels;
-    }
-
-    private Job varscanSNP() {
-        Job vsSNP = getWorkflow().createBashJob("varscan_snps");
-        Command cmd = vsSNP.getCommand();
-        cmd.addArgument(this.java);
-        cmd.addArgument(this.javaMem);
-        cmd.addArgument("-jar " + this.varscan);
-        cmd.addArgument("processSomatic");
-        cmd.addArgument(this.snpFile);
-        vsSNP.setMaxMemory(Integer.toString(varscanMem * 1024));
-        vsSNP.setQueue(getOptionalProperty("queue", ""));
-        return vsSNP;
-    }
-
-    private Job varscanCNA() {
-        Job vsCNA = getWorkflow().createBashJob("varscan_cna");
+    private Job runVarScanCopyNumber(String tumourPileupFile, String normalPileupFile) {
+        Job vsCNA = getWorkflow().createBashJob("varscan_CNA");
         Command cmd = vsCNA.getCommand();
+//        cmd.addArgument("cd " + this.outDir + ";");
         cmd.addArgument(this.java);
         cmd.addArgument(this.javaMem);
         cmd.addArgument("-jar " + this.varscan);
         cmd.addArgument("copynumber");
-        cmd.addArgument(this.mpileupFile);
-        cmd.addArgument(this.copyNumberFile);
-        cmd.addArgument("--mpileup 1");
+        cmd.addArgument(tumourPileupFile);
+        cmd.addArgument(normalPileupFile);
+        cmd.addArgument(this.outDir + this.outputFilenamePrefix);
+        cmd.addArgument("--min-base-qual "+this.minBaseQual);
+        cmd.addArgument("--min-map-qual "+this.minMapQ);
+        cmd.addArgument("--min-coverage "+this.minCov);
         vsCNA.setMaxMemory(Integer.toString(varscanMem * 1024));
-        vsCNA.setQueue(getOptionalProperty("queue", ""));
+        vsCNA.setQueue(this.queue);
         return vsCNA;
     }
-
-    private Job varscanCNACaller() {
-        Job vsCNAcall = getWorkflow().createBashJob("varscan_cna_call");
-        Command cmd = vsCNAcall.getCommand();
-        cmd.addArgument(this.java);
-        cmd.addArgument(this.javaMem);
-        cmd.addArgument("-jar " + this.varscan);
-        cmd.addArgument("copyCaller");
-        cmd.addArgument(this.cnvFile);
-        cmd.addArgument("--output-file " + this.varscanCopycallFile);
-        cmd.addArgument("--mpileup 1");
-        vsCNAcall.setMaxMemory(Integer.toString(varscanMem * 1024));
-        vsCNAcall.setQueue(getOptionalProperty("queue", ""));
-        return vsCNAcall;
-    }
-
-
+    
+    // tabix index
+//    private Job tabixIndex(String vcfFile){
+//        Job tabixIndexVCF = getWorkflow().createBashJob("tabix_index_vcf");
+//        Command cmd = tabixIndexVCF.getCommand();
+//        cmd.addArgument(this.bgzip)
+//    }
 }
