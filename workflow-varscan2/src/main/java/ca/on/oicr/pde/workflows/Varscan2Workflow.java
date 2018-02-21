@@ -236,7 +236,7 @@ public class Varscan2Workflow extends OicrWorkflow {
         cmd.addArgument("copynumber");
         cmd.addArgument(tumourPileupFile);
         cmd.addArgument(normalPileupFile);
-        cmd.addArgument(this.outDir + this.outputFilenamePrefix);
+        cmd.addArgument(this.dataDir + this.outputFilenamePrefix);
         cmd.addArgument("--min-base-qual "+this.minBaseQual);
         cmd.addArgument("--min-map-qual "+this.minMapQ);
         cmd.addArgument("--min-coverage "+this.minCov);
