@@ -158,18 +158,30 @@ public class Varscan2Workflow extends OicrWorkflow {
             somaticCall.addParent(parentJob);
             
             // Provision VCF
+            String provOutVCF = this.dataDir + this.outputFilenamePrefix + ".varscan.somatic.vcf";
+            SqwFile outVCF = createOutputFile(provOutVCF, VCF_METATYPE, this.manualOutput);
+            outVCF.getAnnotations().put("somatic VCF", "varscan");
+            somaticCall.addFile(outVCF);
             
             //copy number
             Job copyNumber = runVarScanCopyNumber(tumourPileupFile, normalPileupFile);
             copyNumber.addParent(parentJob);
             
             // Provision Copynumber file
+            String provCopyNumber = this.dataDir + this.outputFilenamePrefix + ".copynumber";
+            SqwFile outCopyNumber = createOutputFile(provCopyNumber, COPYNUMBER_METATYPE, this.manualOutput);
+            outCopyNumber.getAnnotations().put("copy number", "varscan");
+            copyNumber.addFile(outCopyNumber);
         }
         else {
             Job germlineCall = runVarScanGermline(tumourPileupFile);
             germlineCall.addParent(parentJob);
             
             // Provision VCF
+            String provOutVCF = this.dataDir + this.outputFilenamePrefix + ".varscan.germline.vcf";
+            SqwFile outVCF = createOutputFile(provOutVCF, VCF_METATYPE, this.manualOutput);
+            outVCF.getAnnotations().put("germline VCF", "varscan");
+            germlineCall.addFile(outVCF);
         }
         
         
