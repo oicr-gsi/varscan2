@@ -111,12 +111,12 @@ public class VarScan2Decider extends OicrDecider {
                 }
             }
         }
-        if (haveNorm && haveTumr) {
+        if (haveTumr) {
             return super.doFinalCheck(commaSeparatedFilePaths, commaSeparatedParentAccessions);
         }
 
-        String absent = haveNorm ? "Tumor" : "Normal";
-        Log.error("Data for " + absent + " tissue are not available, WON'T RUN");
+//        String absent = haveNorm ? "Tumor" : "Normal";
+//        Log.error("Data for " + absent + " tissue are not available, WON'T RUN");
         return new ReturnValue(ReturnValue.INVALIDPARAMETERS);
     }
 
@@ -139,7 +139,7 @@ public class VarScan2Decider extends OicrDecider {
 
         // Do not process tumor tissues of type that doesn't match set parameter
         if (null != this.tumorType) {
-            if (!currentTissueType.equals("R") && !currentTissueType.equals(this.tumorType)) {
+            if (!currentTissueType.equals(this.tumorType)) {
                 return false;
             }
         }
@@ -226,7 +226,7 @@ public class VarScan2Decider extends OicrDecider {
     @Override
     protected Map<String, String> modifyIniFile(String commaSeparatedFilePaths, String commaSeparatedParentAccessions) {
 
-        StringBuilder inputNormFiles = new StringBuilder();
+//        StringBuilder inputNormFiles = new StringBuilder();
         StringBuilder inputTumrFiles = new StringBuilder();
         StringBuilder groupIds = new StringBuilder();
         String[] filePaths = commaSeparatedFilePaths.split(",");
@@ -248,12 +248,12 @@ public class VarScan2Decider extends OicrDecider {
                 }
 
                 String tt = bs.getTissueType();
-                if (!tt.isEmpty() && tt.equals("R")) {
-                    if (inputNormFiles.length() != 0) {
-                        inputNormFiles.append(",");
-                    }
-                    inputNormFiles.append(p);
-                } else if (!tt.isEmpty()) {
+//                if (!tt.isEmpty() && tt.equals("R")) {
+//                    if (inputNormFiles.length() != 0) {
+//                        inputNormFiles.append(",");
+//                    }
+//                    inputNormFiles.append(p);
+                if (!tt.isEmpty() && !tt.equals("R")) { // do not launch for normal bam files
                     if (inputTumrFiles.length() != 0) {
                         inputTumrFiles.append(",");
                         // group_ids recoreded using info from tumor entries, normal files do not have group_ids
@@ -269,7 +269,7 @@ public class VarScan2Decider extends OicrDecider {
             }
         }
 
-        if (inputNormFiles.length() == 0 || inputTumrFiles.length() == 0) {
+        if (inputTumrFiles.length() == 0) {
             Log.error("THE DONOR does not have data to run the workflow");
             abortSchedulingOfCurrentWorkflowRun();
         }
@@ -286,7 +286,7 @@ public class VarScan2Decider extends OicrDecider {
 
         Map<String, String> iniFileMap = new TreeMap<String, String>();
 
-        iniFileMap.put("input_files_normal", inputNormFiles.toString());
+//        iniFileMap.put("input_files_normal", inputNormFiles.toString());
         iniFileMap.put("input_files_tumor", inputTumrFiles.toString());
         iniFileMap.put("data_dir", "data");
         iniFileMap.put("template_type", this.templateType);

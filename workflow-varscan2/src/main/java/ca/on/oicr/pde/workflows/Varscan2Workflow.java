@@ -65,8 +65,8 @@ public class Varscan2Workflow extends OicrWorkflow {
     private String queue;
 
     // meta-types
-    private final static String VCF_METATYPE = "text/vcf-4";
-    private final static String COPYNUMBER_METATYPE = "text/varscan-copynumber";
+    private final static String VCF_GZ_METATYPE = "application/vcf-gz";
+    private final static String TBI_METATYPE = "application/tbi";
 
     private void init() {
         try {
@@ -76,7 +76,7 @@ public class Varscan2Workflow extends OicrWorkflow {
 
             // input samples 
             tumorBam = getProperty("input_files_tumor");
-            normalBam = getOptionalProperty("input_files_normal", null);
+//            normalBam = getOptionalProperty("input_files_normal", null);
             
             // params
             minVarFreq = Float.parseFloat(getProperty("minimum_variant_freq"));
@@ -191,12 +191,12 @@ public class Varscan2Workflow extends OicrWorkflow {
         
         // Provision VCF
         String gzProvOutVCF = provOutVCF + ".gz";
-        SqwFile outVCF = createOutputFile(gzProvOutVCF, VCF_METATYPE, this.manualOutput);
+        SqwFile outVCF = createOutputFile(gzProvOutVCF, VCF_GZ_METATYPE, this.manualOutput);
         outVCF.getAnnotations().put("single sample VCF", "varscan");
         parentJob.addFile(outVCF);
         
         String tbiOut = gzProvOutVCF + ".tbi"; 
-        SqwFile indexOut = createOutputFile(tbiOut, VCF_METATYPE, this.manualOutput);
+        SqwFile indexOut = createOutputFile(tbiOut, TBI_METATYPE, this.manualOutput);
         indexOut.getAnnotations().put("index file for VCF", "varscan");
         parentJob.addFile(indexOut);
 //        }
