@@ -26,6 +26,8 @@ public class VarScan2Decider extends OicrDecider {
     private String templateType = "EX";
     private String queue = "";
     private String externalID;
+    private int minCovCutOff = 8;
+    private float minVarFreq = (float) 0.02;
 
     private final static String BAM_METATYPE = "application/bam";
     private String tumorType;
@@ -39,6 +41,8 @@ public class VarScan2Decider extends OicrDecider {
                 + "so that it runs on data only of this template type").withRequiredArg();
         parser.accepts("queue", "Optional: Set the queue (Default: not set)").withRequiredArg();
         parser.accepts("tumor-type", "Optional: Set tumor tissue type to something other than primary tumor (P), i.e. X . Default: Not set (All)").withRequiredArg();
+        parser.accepts("min-var-freq", "Required. Set minimun variant frequency").withRequiredArg();
+        parser.accepts("min-coverage-cutoff", "Required. Set minimun coverage cut off for tumour sample").withRequiredArg();
     }
 
     @Override
@@ -57,6 +61,13 @@ public class VarScan2Decider extends OicrDecider {
 
         if (this.options.has("queue")) {
             this.queue = options.valueOf("queue").toString();
+        }
+        
+        if (this.options.has("min-var-freq")) {
+            this.minVarFreq = Float.valueOf(getArgument("min-var-freq"));
+        }
+        if (this.options.has("min-coverage-cutoff")) {
+            this.minCovCutOff = Integer.valueOf(getArgument("min-coverage-cutoff"));
         }
 
         if (this.options.has("template-type")) {
@@ -291,6 +302,8 @@ public class VarScan2Decider extends OicrDecider {
         iniFileMap.put("data_dir", "data");
         iniFileMap.put("template_type", this.templateType);
         iniFileMap.put("external_name", this.externalID);
+        iniFileMap.put("minimum_coverage_cutoff_tumour", String.valueOf(this.minCovCutOff));
+        iniFileMap.put("minimum_variant_freq", String.valueOf(this.minVarFreq));
 
         if (!this.queue.isEmpty()) {
             iniFileMap.put("queue", this.queue);
