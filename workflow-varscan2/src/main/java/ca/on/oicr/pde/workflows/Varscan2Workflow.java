@@ -280,7 +280,7 @@ public class Varscan2Workflow extends OicrWorkflow {
         Command cmd = tabixIndexVCF.getCommand();
         cmd.addArgument(this.bgzip);
         cmd.addArgument(vcfFile + ";");
-        cmd.addArgument(this.tabix + "-p vcf "+ vcfFile+".gz");
+        cmd.addArgument(this.tabix + " -p vcf "+ vcfFile+".gz");
         tabixIndexVCF.setMaxMemory(Integer.toString(varscanMem * 1024));
         tabixIndexVCF.setQueue(this.queue);
         return tabixIndexVCF;
