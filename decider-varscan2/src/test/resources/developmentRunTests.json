@@ -1,6 +1,6 @@
 {
     "defaults": {
-        "description": "Sequenza decider test",
+        "description": "Varscan2 decider test",
         "metricsResources": "/expected_output/development/",
         "parameters": {
             "--parent-wf-accessions": "9532886,10237604"
