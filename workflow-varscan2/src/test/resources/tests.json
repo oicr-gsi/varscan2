@@ -1,0 +1,20 @@
+{
+    "defaults": {
+        "description": "Varscan2 workflow test",
+        "metrics_calculate": "calculate.sh",
+        "metrics_compare": "compare.sh",
+        "input_config_dir": "/.mounts/labs/PDE/data/RegressionTests/Varscan2/workflow/input_config",
+        "output_metrics_dir": "/.mounts/labs/PDE/data/RegressionTests/Varscan2/workflow/output_expectation"
+    },
+    "tests": [
+        {
+            "id": "workflow_test_01",
+            "parameters": {
+                "input_files_tumor": "/.mounts/labs/PDE/data/testdata/genomic/bam/TGL_test/Sequenza/TGL01_0001_Sk_M_PE_426_EX.sorted.filter.deduped.realign.recal.bam",
+                "external_name": "INS-D-004-ST",
+                "minimum_variant_freq": "0.02",
+                "minimum_coverage_cutoff_tumour": "8"
+            }
+        }
+    ]
+}
